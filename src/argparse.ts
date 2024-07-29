@@ -131,24 +131,23 @@ class ArgumentParser {
 
     private handleOption(name: string, option: ArgumentOptions, value: string | undefined, index: number, args: string[]): number {
         const dest = option.dest || name;
-        if (option.type === 'boolean') {
-            if (value === undefined) {
-                this.parsedArgs[dest] = true;
-            } else {
-                const values = this.collectValues(value, index, args, option.nargs as NargsOption);
-                if (values.length === 0) {
-                    this.parsedArgs[dest] = true;
-                } else {
-                    this.parsedArgs[dest] = this.parseValue(values[0], option, name);
-                }
-                return index + values.length;
-            }
-            return index;
-        }
-
         const nargs = option.nargs === undefined ? 1 : option.nargs;
-
         const values = this.collectValues(value, index, args, nargs);
+        if (option.type === 'boolean') {
+            if (values.length == 0) {
+                this.parsedArgs[dest] = true;
+                return index;
+            } else {
+                try {
+                    this.parsedArgs[dest] = this.parseValues(values, option, name);
+                } catch (e: unknown) {
+                    if (e instanceof ArgumentTypeError) {
+                        this.parsedArgs[dest] = true;
+                        return index;
+                    }
+                }
+            }
+        }
         if (values.length > 0) {
             this.parsedArgs[dest] = this.parseValues(values, option, name);
         } else if (nargs === '*') {
@@ -163,7 +162,7 @@ class ArgumentParser {
 
         const values: string[] = [];
         const remaining = args.slice(index + 1);
-        const count = typeof nargs === 'number' ? nargs : (nargs === '+' ? 1 : 0);
+        const count = typeof nargs === 'number' ? nargs : (nargs === '+' || nargs === '?' ? 1 : 0);
 
         for (const arg of remaining) {
             if (arg.startsWith('-') && (values.length >= count || nargs === '?')) break;
@@ -195,7 +194,7 @@ class ArgumentParser {
                 if (isNaN(parsed)) throw new ArgumentTypeError(name, 'number', value);
                 break;
             case 'boolean':
-                if (value.toLowerCase() === 'true' || value === '') parsed = true;
+                if (value.toLowerCase() === 'true') parsed = true;
                 else if (value.toLowerCase() === 'false') parsed = false;
                 else throw new ArgumentTypeError(name, 'boolean', value);
                 break;
@@ -315,20 +314,20 @@ class ArgumentParser {
         }
     }
 
-    formatHelp(): string {
-        let help = `${this.description}\n\n`;
-        help += 'positional arguments:\n';
+    usage(): string {
+        let usage = `${this.description}\n\n`;
+        usage += 'positional arguments:\n';
         for (const arg of this.positionalArgs) {
-            help += this.formatArgHelp(arg);
+            usage += this.formatArgUsage(arg);
         }
-        help += '\noptions:\n';
+        usage += '\noptions:\n';
         for (const [, arg] of this.arguments) {
-            help += this.formatArgHelp(arg);
+            usage += this.formatArgUsage(arg);
         }
-        return help;
+        return usage;
     }
 
-    private formatArgHelp(arg: ArgumentOptions): string {
+    private formatArgUsage(arg: ArgumentOptions): string {
         const metavar = arg.metavar || arg.dest || arg.flags[arg.flags.length - 1].replace(/^-+/, '');
         const flags = arg.flags.join(', ');
         const help = arg.help || '';

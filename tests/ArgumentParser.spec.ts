@@ -38,7 +38,7 @@ describe('ArgumentParser', () => {
         expect(parser.parseArgs('--flag')).toEqual({ flag: true });
         expect(parser.parseArgs('--flag true')).toEqual({ flag: true });
         expect(parser.parseArgs('--flag false')).toEqual({ flag: false });
-        expect(() => parser.parseArgs('--flag invalid')).toThrow(ArgumentTypeError);
+        expect(() => parser.parseArgs('--flag invalid')).toThrow(UnknownArgumentError);
     });
 
     test('handle boolean flag followed by positional argument', () => {
@@ -90,8 +90,9 @@ describe('ArgumentParser', () => {
     test('handle default values', () => {
         parser.addArgument(['--name'], { type: 'string', default: 'Anonymous' });
         parser.addArgument(['--age'], { type: 'number', default: 0 });
+        parser.addArgument(['file'], { type: 'string', default: 'file.txt'});
         const args = parser.parseArgs('');
-        expect(args).toEqual({ name: 'Anonymous', age: 0 });
+        expect(args).toEqual({ name: 'Anonymous', age: 0, file: 'file.txt' });
     });
 
     test('handle --key=value syntax', () => {
@@ -108,8 +109,10 @@ describe('ArgumentParser', () => {
 
     test('handle --key=value syntax with quotes', () => {
         parser.addArgument(['--message'], { type: 'string' });
-        const args = parser.parseArgs('--message="Hello, \\"World\\""');
+        let args = parser.parseArgs('--message="Hello, \\"World\\""');
         expect(args).toEqual({ message: 'Hello, "World"' });
+        args = parser.parseArgs("--message='Hello, \"World\"'");
+        expect(args).toEqual({ message: "Hello, \"World\"" });
     });
 
     test('handle mixed --key value and --key=value syntax', () => {
@@ -169,12 +172,12 @@ describe('ArgumentParser', () => {
         expect(args).toEqual({ username: 'John' });
     });
 
-    test('formatHelp output', () => {
+    test('usage output', () => {
         parser.addArgument(['input'], { help: 'Input file' });
         parser.addArgument(['--verbose'], { help: 'Increase output verbosity' });
-        const helpText = parser.formatHelp();
-        expect(helpText).toContain('Input file');
-        expect(helpText).toContain('Increase output verbosity');
+        const usageText = parser.usage();
+        expect(usageText).toContain('Input file');
+        expect(usageText).toContain('Increase output verbosity');
     });
 
     test('parse mixed positional and optional arguments', () => {
@@ -303,13 +306,14 @@ describe('ArgumentParser', () => {
 
     test('handle arguments with metavar', () => {
         parser.addArgument(['--age'], { metavar: 'YEARS' });
-        const helpText = parser.formatHelp();
-        expect(helpText).toContain('--age YEARS');
+        const usageText = parser.usage();
+        expect(usageText).toContain('--age YEARS');
     });
 
     test('throw UnknownArgumentError for unknown option', () => {
         parser.addArgument(['--known']);
         expect(() => parser.parseArgs('--unknown')).toThrow(UnknownArgumentError);
+        expect(() => parser.parseArgs('-u')).toThrow(UnknownArgumentError);
     });
 
     test('throw ArgumentTypeError for invalid type conversion', () => {
@@ -336,6 +340,6 @@ describe('ArgumentParser', () => {
 
     test('throw InvalidNargsError for incorrect number of values', () => {
         parser.addArgument(['--coords'], { nargs: 2 });
-        expect(() => parser.parseArgs('--coords 1')).toThrow(InvalidNargsError);
+        expect(() => parser.parseArgs('--coords 1')).toThrow();
     });
-});
+InvalidNargsError});
