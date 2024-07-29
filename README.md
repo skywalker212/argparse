@@ -105,6 +105,21 @@ Use the `parseArgs` method to parse a string of arguments:
 const args = parser.parseArgs('command --verbose -vvv --port=1234 -n "My name" foo bar --tag qux --tag=qix file1 file2');
 ```
 
+### Printing usage
+
+Use the `usage` method to print the usage string for the parser:
+
+```javascript
+const usageText = parser.usage();
+// Test parser
+//    
+//     positional arguments:
+//       input FILE    Input file
+//  
+//     options:
+//       --verbose VERBOSE    Increase output verbosity
+```
+
 ### Error Handling
 
 The library will throw specific error types for various parsing issues. You should wrap the `parseArgs` call in a try-catch block to handle these errors:
