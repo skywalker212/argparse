@@ -1,15 +1,10 @@
 import typescript from '@rollup/plugin-typescript';
 import terser from '@rollup/plugin-terser';
+import { nodeResolve } from '@rollup/plugin-node-resolve';
 
 export default {
   input: 'src/index.ts',
   output: [
-    {
-      file: 'dist/argparse.js',
-      format: 'umd',
-      name: 'argparse',
-      sourcemap: true,
-    },
     {
       file: 'dist/argparse.min.js',
       format: 'umd',
@@ -20,8 +15,12 @@ export default {
     {
       file: 'dist/argparse.esm.js',
       format: 'es',
+      plugins: [terser()],
       sourcemap: true,
     },
   ],
-  plugins: [typescript()],
+  plugins: [
+    typescript(),
+    nodeResolve({ browser: true }),
+  ],
 };
