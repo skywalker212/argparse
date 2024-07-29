@@ -33,6 +33,20 @@ describe('ArgumentParser', () => {
         expect(args).toEqual({ verbose: true });
     });
 
+    test('handle boolean type conversion', () => {
+        parser.addArgument(['--flag'], { type: 'boolean' });
+        expect(parser.parseArgs('--flag')).toEqual({ flag: true });
+        expect(parser.parseArgs('--flag true')).toEqual({ flag: true });
+        expect(parser.parseArgs('--flag false')).toEqual({ flag: false });
+        expect(() => parser.parseArgs('--flag invalid')).toThrow(ArgumentTypeError);
+    });
+
+    test('handle boolean flag followed by positional argument', () => {
+        parser.addArgument(['--flag'], { type: 'boolean' });
+        parser.addArgument(['pos']);
+        expect(parser.parseArgs('--flag true positional')).toEqual({ flag: true, pos: 'positional' });
+    });
+
     test('parse multiple arguments', () => {
         parser.addArgument(['--name'], { type: 'string' });
         parser.addArgument(['--age'], { type: 'number' });
@@ -49,6 +63,13 @@ describe('ArgumentParser', () => {
         expect(args).toEqual({ name: 'Bob', age: 40, verbose: true });
     });
 
+    test('handle combined short options with value', () => {
+        parser.addArgument(['-a'], { type: 'boolean' });
+        parser.addArgument(['-b'], { type: 'string' });
+        const args = parser.parseArgs('-ab value');
+        expect(args).toEqual({ a: true, b: 'value' });
+    });
+
     test('parse positional arguments', () => {
         parser.addArgument(['input']);
         parser.addArgument(['output']);
@@ -56,11 +77,46 @@ describe('ArgumentParser', () => {
         expect(args).toEqual({ input: 'file1.txt', output: 'file2.txt' });
     });
 
+    test('throw error for missing required positional arguments', () => {
+        parser.addArgument(['required'], { required: true });
+        expect(() => parser.parseArgs('')).toThrow(MissingRequiredArgumentError);
+    });
+
+    test('throw error for unknown positional arguments', () => {
+        parser.addArgument(['known']);
+        expect(() => parser.parseArgs('known unknown')).toThrow(UnknownArgumentError);
+    });
+
     test('handle default values', () => {
         parser.addArgument(['--name'], { type: 'string', default: 'Anonymous' });
         parser.addArgument(['--age'], { type: 'number', default: 0 });
         const args = parser.parseArgs('');
         expect(args).toEqual({ name: 'Anonymous', age: 0 });
+    });
+
+    test('handle --key=value syntax', () => {
+        parser.addArgument(['--name'], { type: 'string' });
+        const args = parser.parseArgs('--name=John');
+        expect(args).toEqual({ name: 'John' });
+    });
+
+    test('handle --key=value syntax with spaces', () => {
+        parser.addArgument(['--name'], { type: 'string' });
+        const args = parser.parseArgs('--name="John Doe"');
+        expect(args).toEqual({ name: 'John Doe' });
+    });
+
+    test('handle --key=value syntax with quotes', () => {
+        parser.addArgument(['--message'], { type: 'string' });
+        const args = parser.parseArgs('--message="Hello, \\"World\\""');
+        expect(args).toEqual({ message: 'Hello, "World"' });
+    });
+
+    test('handle mixed --key value and --key=value syntax', () => {
+        parser.addArgument(['--name'], { type: 'string' });
+        parser.addArgument(['--age'], { type: 'number' });
+        const args = parser.parseArgs('--name=John --age 30');
+        expect(args).toEqual({ name: 'John', age: 30 });
     });
 
     test('handle nargs', () => {
@@ -75,9 +131,18 @@ describe('ArgumentParser', () => {
         expect(args).toEqual({ names: ['Alice', 'Bob', 'Charlie'] });
     });
 
+    test('throw error for nargs "+" with no values', () => {
+        parser.addArgument(['--nums'], { nargs: '+', type: 'number' });
+        expect(() => parser.parseArgs('--nums')).toThrow(InvalidNargsError);
+    });
+
     test('handle nargs with "*"', () => {
         parser.addArgument(['--names'], { nargs: '*' });
-        const args = parser.parseArgs('--names');
+        let args = parser.parseArgs('--names');
+        expect(args).toEqual({ names: [] });
+        args = parser.parseArgs('--names Alice Bob');
+        expect(args).toEqual({ names: ['Alice', 'Bob'] });
+        args = parser.parseArgs('');
         expect(args).toEqual({ names: [] });
     });
 
@@ -112,6 +177,136 @@ describe('ArgumentParser', () => {
         expect(helpText).toContain('Increase output verbosity');
     });
 
+    test('parse mixed positional and optional arguments', () => {
+        parser.addArgument(['input']);
+        parser.addArgument(['--verbose'], { type: 'boolean' });
+        parser.addArgument(['output']);
+        const args = parser.parseArgs('file1.txt --verbose file2.txt');
+        expect(args).toEqual({ input: 'file1.txt', verbose: true, output: 'file2.txt' });
+    });
+
+    test('handle multiple boolean flags', () => {
+        parser.addArgument(['-v', '--verbose'], { type: 'boolean' });
+        parser.addArgument(['-q', '--quiet'], { type: 'boolean' });
+        const args = parser.parseArgs('-v -q');
+        expect(args).toEqual({ verbose: true, quiet: true });
+    });
+
+    test('handle combined short options', () => {
+        parser.addArgument(['-v', '--verbose'], { type: 'boolean' });
+        parser.addArgument(['-n', '--name'], { type: 'string' });
+        const args = parser.parseArgs('-vn John');
+        expect(args).toEqual({ verbose: true, name: 'John' });
+    });
+
+    test('handle arguments with spaces', () => {
+        parser.addArgument(['--name'], { type: 'string' });
+        const args = parser.parseArgs('--name "John Doe"');
+        expect(args).toEqual({ name: 'John Doe' });
+    });
+
+    test('handle arguments with quotes', () => {
+        parser.addArgument(['--message'], { type: 'string' });
+        const args = parser.parseArgs('--message "Hello, \\"World\\""');
+        expect(args).toEqual({ message: 'Hello, "World"' });
+    });
+
+    test('handle single quotes', () => {
+        parser.addArgument(['--message'], { type: 'string' });
+        const args = parser.parseArgs("--message 'Hello, World'");
+        expect(args).toEqual({ message: 'Hello, World' });
+    });
+
+    test('handle mixed quotes', () => {
+        parser.addArgument(['--message'], { type: 'string' });
+        const args = parser.parseArgs('--message "Hello, \'World\'"');
+        expect(args).toEqual({ message: "Hello, 'World'" });
+    });
+
+    test('handle escaped single quotes', () => {
+        parser.addArgument(['--message'], { type: 'string' });
+        const args = parser.parseArgs("--message 'Hello, \\'World\\''");
+        expect(args).toEqual({ message: "Hello, 'World'" });
+    });
+
+    test('handle unquoted arguments with spaces', () => {
+        parser.addArgument(['pos1']);
+        parser.addArgument(['pos2']);
+        const args = parser.parseArgs('Hello World');
+        expect(args).toEqual({ pos1: 'Hello', pos2: 'World' });
+    });
+
+    test('handle multiple occurrences of the same argument', () => {
+        parser.addArgument(['--num'], { type: 'number' });
+        const args = parser.parseArgs('--num 1 --num 2 --num 3');
+        expect(args).toEqual({ num: 3 });
+    });
+
+    test('handle nargs with default value', () => {
+        parser.addArgument(['--coords'], { nargs: 2, type: 'number', default: [0, 0] });
+        let args = parser.parseArgs('');
+        expect(args).toEqual({ coords: [0, 0] });
+        args = parser.parseArgs('--coords 10 20');
+        expect(args).toEqual({ coords: [10, 20] });
+    });
+
+    test('handle choices with different types', () => {
+        parser.addArgument(['--value'], { choices: ['a', 1, true] });
+        let args = parser.parseArgs('--value a');
+        expect(args).toEqual({ value: 'a' });
+        args = parser.parseArgs('--value 1');
+        expect(args).toEqual({ value: 1 });
+        args = parser.parseArgs('--value true');
+        expect(args).toEqual({ value: true });
+    });
+
+    test('handle required argument with nargs', () => {
+        parser.addArgument(['--required'], { required: true, nargs: 2 });
+        expect(() => parser.parseArgs('')).toThrow(MissingRequiredArgumentError);
+        const args = parser.parseArgs('--required value1 value2');
+        expect(args).toEqual({ required: ['value1', 'value2'] });
+    });
+
+    test('handle optional arguments before positional', () => {
+        parser.addArgument(['--opt'], { type: 'string' });
+        parser.addArgument(['pos']);
+        const args = parser.parseArgs('--opt value positional');
+        expect(args).toEqual({ opt: 'value', pos: 'positional' });
+    });
+
+    test('handle nargs "?" with default', () => {
+        parser.addArgument(['--opt'], { nargs: '?', default: 'default' });
+        let args = parser.parseArgs('');
+        expect(args).toEqual({ opt: 'default' });
+        args = parser.parseArgs('--opt');
+        expect(args).toEqual({ opt: 'default' });
+        args = parser.parseArgs('--opt value');
+        expect(args).toEqual({ opt: 'value' });
+    });
+
+    test('handle nargs "*" with default', () => {
+        parser.addArgument(['--opt'], { nargs: '*', default: ['default'] });
+        let args = parser.parseArgs('');
+        expect(args).toEqual({ opt: ['default'] });
+        args = parser.parseArgs('--opt');
+        expect(args).toEqual({ opt: [] });
+        args = parser.parseArgs('--opt value1 value2');
+        expect(args).toEqual({ opt: ['value1', 'value2'] });
+    });
+
+    test('handle multiple positional arguments with nargs', () => {
+        parser.addArgument(['pos1'], { nargs: 2 });
+        parser.addArgument(['pos2'], { nargs: '+' });
+        const args = parser.parseArgs('a b c d e');
+        expect(args).toEqual({ pos1: ['a', 'b'], pos2: ['c', 'd', 'e'] });
+    });
+
+    test('handle arguments with metavar', () => {
+        parser.addArgument(['--age'], { metavar: 'YEARS' });
+        const helpText = parser.formatHelp();
+        expect(helpText).toContain('--age YEARS');
+    });
+
     test('throw UnknownArgumentError for unknown option', () => {
         parser.addArgument(['--known']);
         expect(() => parser.parseArgs('--unknown')).toThrow(UnknownArgumentError);
@@ -120,6 +315,13 @@ describe('ArgumentParser', () => {
     test('throw ArgumentTypeError for invalid type conversion', () => {
         parser.addArgument(['--age'], { type: 'number' });
         expect(() => parser.parseArgs('--age not-a-number')).toThrow(ArgumentTypeError);
+    });
+
+    test('throw error for invalid argument options', () => {
+        expect(() => parser.addArgument(['--invalid'], { type: 'invalid' as any })).toThrow(ArgumentParserError);
+        expect(() => parser.addArgument(['--invalid'], { nargs: 'invalid' as any })).toThrow(ArgumentParserError);
+        expect(() => parser.addArgument(['--invalid'], { choices: 'not an array' as any })).toThrow(ArgumentParserError);
+        expect(() => parser.addArgument(['--invalid'], { required: true, default: 'value' })).toThrow(ArgumentParserError);
     });
 
     test('throw MissingRequiredArgumentError for missing required argument', () => {

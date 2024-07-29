@@ -63,9 +63,12 @@ class ArgumentParser {
     constructor(private description: string = '') { }
 
     addArgument(flags: string[], options: Partial<ArgumentOptions> = {}): ArgumentParser {
-        this.validateArgumentOptions(options as ArgumentOptions);
-        const name = flags[flags.length - 1].replace(/^-+/, '');
         const fullOptions: ArgumentOptions = { ...options, flags };
+        if (fullOptions.type === 'boolean' && fullOptions.nargs === undefined) {
+            fullOptions.nargs = '?';
+        }
+        this.validateArgumentOptions(fullOptions);
+        const name = flags[flags.length - 1].replace(/^-+/, '');
 
         if (flags[0].startsWith('-')) {
             this.arguments.set(name, fullOptions);
@@ -88,7 +91,21 @@ class ArgumentParser {
     }
 
     private parseLongOption(arg: string, index: number, args: string[]): number {
-        const [name, value] = arg.slice(2).split('=');
+        const equalIndex = arg.indexOf('=');
+        let name: string, value: string | undefined;
+
+        if (equalIndex !== -1) {
+            name = arg.slice(2, equalIndex);
+            value = arg.slice(equalIndex + 1);
+            if ((value.startsWith('"') && value.endsWith('"')) ||
+                (value.startsWith("'") && value.endsWith("'"))) {
+                value = value.slice(1, -1);
+            }
+            value = value.replace(/\\(["'])/g, '$1');
+        } else {
+            name = arg.slice(2);
+        }
+
         const option = this.arguments.get(name);
         if (!option) {
             throw new UnknownArgumentError(arg);
@@ -115,18 +132,29 @@ class ArgumentParser {
     private handleOption(name: string, option: ArgumentOptions, value: string | undefined, index: number, args: string[]): number {
         const dest = option.dest || name;
         if (option.type === 'boolean') {
-            this.parsedArgs[dest] = true;
+            if (value === undefined) {
+                this.parsedArgs[dest] = true;
+            } else {
+                const values = this.collectValues(value, index, args, option.nargs as NargsOption);
+                if (values.length === 0) {
+                    this.parsedArgs[dest] = true;
+                } else {
+                    this.parsedArgs[dest] = this.parseValue(values[0], option, name);
+                }
+                return index + values.length;
+            }
             return index;
         }
 
         const nargs = option.nargs === undefined ? 1 : option.nargs;
-        const values = this.collectValues(value, index, args, nargs);
 
-        if (nargs === '?' && values.length === 0) {
-            return index;
+        const values = this.collectValues(value, index, args, nargs);
+        if (values.length > 0) {
+            this.parsedArgs[dest] = this.parseValues(values, option, name);
+        } else if (nargs === '*') {
+            this.parsedArgs[dest] = [];
         }
 
-        this.parsedArgs[dest] = this.parseValues(values, option, name);
         return index + (value === undefined ? values.length : 0);
     }
 
@@ -156,10 +184,7 @@ class ArgumentParser {
 
     private parseValues(values: string[], option: ArgumentOptions, name: string): any {
         const parsed = values.map(value => this.parseValue(value, option, name));
-        if (option.nargs === undefined || option.nargs === '?') {
-            return parsed[0];
-        }
-        return parsed;
+        return parsed.length === 1 ? parsed[0] : parsed;
     }
 
     private parseValue(value: string, option: ArgumentOptions, name: string): any {
@@ -170,17 +195,22 @@ class ArgumentParser {
                 if (isNaN(parsed)) throw new ArgumentTypeError(name, 'number', value);
                 break;
             case 'boolean':
-                if (value.toLowerCase() !== 'true' && value.toLowerCase() !== 'false') {
-                    throw new ArgumentTypeError(name, 'boolean', value);
-                }
-                parsed = value.toLowerCase() === 'true';
+                if (value.toLowerCase() === 'true' || value === '') parsed = true;
+                else if (value.toLowerCase() === 'false') parsed = false;
+                else throw new ArgumentTypeError(name, 'boolean', value);
                 break;
             default:
                 parsed = value;
         }
 
-        if (option.choices && !option.choices.includes(parsed)) {
-            throw new InvalidChoiceError(name, parsed, option.choices);
+        if (option.choices) {
+            const matchingChoice = option.choices.find(choice =>
+                choice.toString() === parsed.toString()
+            );
+            if (matchingChoice === undefined) {
+                throw new InvalidChoiceError(name, parsed, option.choices);
+            }
+            parsed = matchingChoice;
         }
 
         return parsed;
@@ -211,6 +241,7 @@ class ArgumentParser {
     }
 
     parseArgs(argsString: string): Record<string, any> {
+        this.parsedArgs = {};
         const args = this.tokenize(argsString);
         for (let i = 0; i < args.length; i++) {
             i = this.parseArg(args[i], i, args);
@@ -223,14 +254,26 @@ class ArgumentParser {
     }
 
     private tokenize(argsString: string): string[] {
-        return argsString.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
+        const regex = /(?:[^\s"']+|"(?:\\"|[^"])*"|'(?:\\'|[^'])*')+/g;
+        const tokens = argsString.match(regex) || [];
+        return tokens.map(token => {
+            if ((token.startsWith('"') && token.endsWith('"')) ||
+                (token.startsWith("'") && token.endsWith("'"))) {
+                return token.slice(1, -1).replace(/\\(["'])/g, '$1');
+            }
+            return token;
+        });
     }
 
     private setDefaults() {
         for (const [name, opt] of this.arguments.entries()) {
             const dest = opt.dest || name;
-            if (opt.default !== undefined && this.parsedArgs[dest] === undefined) {
-                this.parsedArgs[dest] = opt.default;
+            if (this.parsedArgs[dest] === undefined) {
+                if (opt.default !== undefined) {
+                    this.parsedArgs[dest] = opt.default;
+                } else if (opt.nargs === '*') {
+                    this.parsedArgs[dest] = [];
+                }
             }
         }
         for (const opt of this.positionalArgs) {

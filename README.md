@@ -49,14 +49,53 @@ parser.addArgument(['file'], {
 
 ### Argument Options
 
-- `type`: The type to convert the argument to ('string', 'number', or 'boolean').
-- `default`: The default value if the argument is not provided.
-- `nargs`: The number of arguments to consume (a number, '?', '*', or '+').
-- `choices`: An array of valid choices for the argument.
-- `required`: Whether the argument is required (true or false).
-- `help`: A description of the argument for help text.
-- `metavar`: A name for the argument in usage messages.
-- `dest`: The name of the attribute to be added to the object returned by parseArgs().
+The `addArgument` method accepts an options object as its second parameter. Here are the available options and their default values:
+
+- `type`: The type to convert the argument to ('string', 'number', or 'boolean'). Default: 'string'.
+- `default`: The default value if the argument is not provided. Default: undefined.
+- `nargs`: The number of arguments to consume (a number, '?', '*', or '+'). Default: undefined (which means 1 for optional arguments, and 1 for positional arguments unless it's the final argument, in which case it will consume all remaining arguments).
+- `choices`: An array of valid choices for the argument. Default: undefined (any value is allowed).
+- `required`: Whether the argument is required (true or false). Default: false for optional arguments, true for positional arguments.
+- `help`: A description of the argument for help text. Default: undefined.
+- `metavar`: A name for the argument in usage messages. Default: The argument name in uppercase.
+- `dest`: The name of the attribute to be added to the object returned by parseArgs(). Default: The longest flag name without the leading dashes, or the positional argument name.
+
+Here's an example demonstrating the usage of these options:
+
+```javascript
+parser.addArgument(['-v', '--verbose'], { 
+  type: 'boolean',
+  help: 'increase output verbosity',
+  default: false
+});
+
+parser.addArgument(['--port'], { 
+  type: 'number',
+  help: 'port number',
+  default: 8080,
+  choices: [8080, 8081, 8082]
+});
+
+parser.addArgument(['files'], { 
+  nargs: '+',
+  help: 'input files',
+  metavar: 'FILE'
+});
+
+parser.addArgument(['--output'], {
+  help: 'output file',
+  required: true,
+  dest: 'outputFile'
+});
+```
+
+In this example:
+- The `verbose` argument is a boolean flag with a default of `false`.
+- The `port` argument is a number with a default of 8080 and limited to specific choices.
+- The `files` argument is a positional argument that accepts one or more values.
+- The `output` argument is a required option that will be accessible as `outputFile` in the parsed arguments.
+
+When using `parseArgs()`, any arguments not provided by the user will use these default values, unless they're required, in which case an error will be thrown if they're missing.
 
 ### Parsing Arguments
 
