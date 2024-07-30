@@ -166,6 +166,58 @@ This library is written in TypeScript and includes type definitions. You can imp
 import { ArgumentParser, ArgumentOptions } from 'js-argparse';
 ```
 
+### Using Generics for Type Safety
+
+The `ArgumentParser` class supports generics, allowing you to specify the expected shape of your parsed arguments. This provides better type safety and autocompletion in TypeScript projects.
+
+Here's an example of how to use generics with `ArgumentParser`:
+
+```typescript
+interface MyArgs {
+  verbose: boolean;
+  port: number;
+  files: string[];
+  outputFile: string;
+}
+
+const parser = new ArgumentParser<MyArgs>('My program description');
+
+parser.addArgument(['-v', '--verbose'], { 
+  type: 'boolean',
+  help: 'increase output verbosity',
+  default: false
+});
+
+parser.addArgument(['--port'], { 
+  type: 'number',
+  help: 'port number',
+  default: 8080
+});
+
+parser.addArgument(['files'], { 
+  nargs: '+',
+  help: 'input files'
+});
+
+parser.addArgument(['--output'], {
+  help: 'output file',
+  required: true,
+  dest: 'outputFile'
+});
+
+const args = parser.parseArgs('--verbose --port 9000 file1.txt file2.txt --output out.txt');
+
+// args is now typed as Partial<MyArgs>
+console.log(args.verbose);  // TypeScript knows this is a boolean
+console.log(args.port);     // TypeScript knows this is a number
+console.log(args.files);    // TypeScript knows this is a string[]
+console.log(args.outputFile); // TypeScript knows this is a string
+```
+
+By specifying the `MyArgs` interface as a type parameter to `ArgumentParser`, TypeScript can provide better type checking and autocompletion for the parsed arguments. The `parseArgs` method will return a `Partial<MyArgs>`, as some arguments might be optional.
+
+Note that while this provides type safety at compile time, you should still handle potential runtime errors, as the actual parsed values depend on the input provided to `parseArgs`.
+
 ## Browser Usage
 
 To use in a browser environment, include the UMD bundle in your HTML:

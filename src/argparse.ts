@@ -55,7 +55,7 @@ interface ArgumentOptions {
     flags: string[];
 }
 
-class ArgumentParser {
+class ArgumentParser<T extends Record<string, any> = Record<string, any>> {
     private arguments: Map<string, ArgumentOptions> = new Map();
     private parsedArgs: Record<string, any> = {};
     private positionalArgs: ArgumentOptions[] = [];
@@ -77,6 +77,32 @@ class ArgumentParser {
         }
 
         return this;
+    }
+
+    parseArgs(argsString: string): Partial<T> {
+        this.parsedArgs = {};
+        const args = this.tokenize(argsString);
+        for (let i = 0; i < args.length; i++) {
+            i = this.parseArg(args[i], i, args);
+        }
+
+        this.setDefaults();
+        this.validateRequired();
+
+        return this.parsedArgs as Partial<T>;
+    }
+
+    usage(): string {
+        let usage = `${this.description}\n\n`;
+        usage += 'positional arguments:\n';
+        for (const arg of this.positionalArgs) {
+            usage += this.formatArgUsage(arg);
+        }
+        usage += '\noptions:\n';
+        for (const [, arg] of this.arguments) {
+            usage += this.formatArgUsage(arg);
+        }
+        return usage;
     }
 
     private parseArg(arg: string, index: number, args: string[]): number {
@@ -239,19 +265,6 @@ class ArgumentParser {
         }
     }
 
-    parseArgs(argsString: string): Record<string, any> {
-        this.parsedArgs = {};
-        const args = this.tokenize(argsString);
-        for (let i = 0; i < args.length; i++) {
-            i = this.parseArg(args[i], i, args);
-        }
-
-        this.setDefaults();
-        this.validateRequired();
-
-        return this.parsedArgs;
-    }
-
     private tokenize(argsString: string): string[] {
         const regex = /(?:[^\s"']+|"(?:\\"|[^"])*"|'(?:\\'|[^'])*')+/g;
         const tokens = argsString.match(regex) || [];
@@ -312,19 +325,6 @@ class ArgumentParser {
                 throw new MissingRequiredArgumentError(opt.flags[0]);
             }
         }
-    }
-
-    usage(): string {
-        let usage = `${this.description}\n\n`;
-        usage += 'positional arguments:\n';
-        for (const arg of this.positionalArgs) {
-            usage += this.formatArgUsage(arg);
-        }
-        usage += '\noptions:\n';
-        for (const [, arg] of this.arguments) {
-            usage += this.formatArgUsage(arg);
-        }
-        return usage;
     }
 
     private formatArgUsage(arg: ArgumentOptions): string {

@@ -1,6 +1,6 @@
 {
   "name": "js-argparse",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "A JavaScript port of Python's argparse library for client-side use",
   "main": "dist/argparse.min.js",
   "module": "dist/argparse.esm.js",
