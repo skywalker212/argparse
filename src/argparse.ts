@@ -60,7 +60,7 @@ class ArgumentParser<T extends Record<string, any> = Record<string, any>> {
     private parsedArgs: Record<string, any> = {};
     private positionalArgs: ArgumentOptions[] = [];
 
-    constructor(private description: string = '') { }
+    constructor(private programName: string, private description: string = '') { }
 
     addArgument(flags: string[], options: Partial<ArgumentOptions> = {}): ArgumentParser {
         const fullOptions: ArgumentOptions = { ...options, flags };
@@ -93,15 +93,27 @@ class ArgumentParser<T extends Record<string, any> = Record<string, any>> {
     }
 
     usage(): string {
-        let usage = `${this.description}\n\n`;
-        usage += 'positional arguments:\n';
-        for (const arg of this.positionalArgs) {
-            usage += this.formatArgUsage(arg);
+        let usage = `${this.description}\nusage: ${this.programName}`;
+        let positionalArgsUsage = '';
+        let optionalArgsUsage = '';
+        let details = '';
+    
+        for (const argOptions of this.positionalArgs) {
+            const metavar = argOptions.metavar || argOptions.dest || 'arg';
+            positionalArgsUsage += ` ${metavar}`;
+            details += `  ${metavar}    ${argOptions.help || ''}\n`;
         }
-        usage += '\noptions:\n';
-        for (const [, arg] of this.arguments) {
-            usage += this.formatArgUsage(arg);
+    
+        for (const [argName, argOptions] of this.arguments.entries()) {
+            const metavar = argOptions.metavar || argOptions.dest || argName;
+            const flags = argOptions.flags.join(', ');
+            const flagsWithValue = argOptions.metavar ? `${flags} ${metavar}` : flags;
+            optionalArgsUsage += ` [${flagsWithValue}]`;
+            details += `  ${flagsWithValue}    ${argOptions.help || ''}\n`;
         }
+    
+        usage += positionalArgsUsage + optionalArgsUsage + '\n\n';
+        usage += details;
         return usage;
     }
 
@@ -325,13 +337,6 @@ class ArgumentParser<T extends Record<string, any> = Record<string, any>> {
                 throw new MissingRequiredArgumentError(opt.flags[0]);
             }
         }
-    }
-
-    private formatArgUsage(arg: ArgumentOptions): string {
-        const metavar = arg.metavar || arg.dest || arg.flags[arg.flags.length - 1].replace(/^-+/, '');
-        const flags = arg.flags.join(', ');
-        const help = arg.help || '';
-        return `  ${flags} ${metavar}    ${help}\n`;
     }
 }
 

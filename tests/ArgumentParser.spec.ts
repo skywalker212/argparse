@@ -12,7 +12,7 @@ describe('ArgumentParser', () => {
     let parser: ArgumentParser;
 
     beforeEach(() => {
-        parser = new ArgumentParser('Test parser');
+        parser = new ArgumentParser('test', 'Test parser');
     });
 
     test('parse simple string argument', () => {

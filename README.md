@@ -17,7 +17,7 @@ npm install js-argparse
 ```javascript
 import { ArgumentParser } from 'js-argparse';
 
-const parser = new ArgumentParser('My program description');
+const parser = new ArgumentParser('progam', 'My program description');
 parser.addArgument(['-f', '--foo'], { help: 'foo bar' });
 parser.addArgument(['--bar'], { help: 'bar foo' });
 parser.addArgument('positional', { help: 'positional argument' });
@@ -112,12 +112,10 @@ Use the `usage` method to print the usage string for the parser:
 ```javascript
 const usageText = parser.usage();
 // Test parser
-//    
-//     positional arguments:
-//       input FILE    Input file
-//  
-//     options:
-//       --verbose VERBOSE    Increase output verbosity
+//     usage: test arg [--verbose]
+    
+//       arg    Input file
+//       --verbose    Increase output verbosity
 ```
 
 ### Error Handling
@@ -180,7 +178,7 @@ interface MyArgs {
   outputFile: string;
 }
 
-const parser = new ArgumentParser<MyArgs>('My program description');
+const parser = new ArgumentParser<MyArgs>('program', 'My program description');
 
 parser.addArgument(['-v', '--verbose'], { 
   type: 'boolean',
@@ -225,7 +223,7 @@ To use in a browser environment, include the UMD bundle in your HTML:
 ```html
 <script src="path/to/argparse.min.js"></script>
 <script>
-  const parser = new argparse.ArgumentParser('My program');
+  const parser = new argparse.ArgumentParser('program', 'My program');
   // Use the parser as described above
 </script>
 ```
