@@ -166,6 +166,13 @@ describe('ArgumentParser', () => {
         expect(args).toEqual({ input: ['file1.txt', 'file2.txt'], output: 'file3.txt' });
     });
 
+    test('handle multiple positional arguments with last having nargs "*"', () => {
+        parser.addArgument(['pos1']);
+        parser.addArgument(['pos2'], { nargs: '*' });
+        const args = parser.parseArgs('a b c d e');
+        expect(args).toEqual({ pos1: 'a', pos2: ['b', 'c', 'd', 'e'] });
+    });
+
     test('handle dest option', () => {
         parser.addArgument(['--name'], { dest: 'username' });
         const args = parser.parseArgs('--name John');

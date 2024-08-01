@@ -59,6 +59,8 @@ class ArgumentParser<T extends Record<string, any> = Record<string, any>> {
     private arguments: Map<string, ArgumentOptions> = new Map();
     private parsedArgs: Record<string, any> = {};
     private positionalArgs: ArgumentOptions[] = [];
+    private currentPositionalIndex: number = 0;
+
 
     constructor(private programName: string, private description: string = '') { }
 
@@ -81,6 +83,7 @@ class ArgumentParser<T extends Record<string, any> = Record<string, any>> {
 
     parseArgs(argsString: string): Partial<T> {
         this.parsedArgs = {};
+        this.currentPositionalIndex = 0;
         const args = this.tokenize(argsString);
         for (let i = 0; i < args.length; i++) {
             i = this.parseArg(args[i], i, args);
@@ -97,13 +100,13 @@ class ArgumentParser<T extends Record<string, any> = Record<string, any>> {
         let positionalArgsUsage = '';
         let optionalArgsUsage = '';
         let details = '';
-    
+
         for (const argOptions of this.positionalArgs) {
             const metavar = argOptions.metavar || argOptions.dest || 'arg';
             positionalArgsUsage += ` ${metavar}`;
             details += `  ${metavar}    ${argOptions.help || ''}\n`;
         }
-    
+
         for (const [argName, argOptions] of this.arguments.entries()) {
             const metavar = argOptions.metavar || argOptions.dest || argName;
             const flags = argOptions.flags.join(', ');
@@ -111,7 +114,7 @@ class ArgumentParser<T extends Record<string, any> = Record<string, any>> {
             optionalArgsUsage += ` [${flagsWithValue}]`;
             details += `  ${flagsWithValue}    ${argOptions.help || ''}\n`;
         }
-    
+
         usage += positionalArgsUsage + optionalArgsUsage + '\n\n';
         usage += details;
         return usage;
@@ -254,17 +257,22 @@ class ArgumentParser<T extends Record<string, any> = Record<string, any>> {
     }
 
     private parsePositional(arg: string) {
-        const option = this.positionalArgs[0];
-        if (!option) {
-            throw new UnknownArgumentError(arg);
+        if (this.currentPositionalIndex >= this.positionalArgs.length) {
+            const lastOption = this.positionalArgs[this.positionalArgs.length - 1];
+            if (lastOption && (lastOption.nargs === '*' || lastOption.nargs === '+')) {
+                this.currentPositionalIndex = this.positionalArgs.length - 1;
+            } else {
+                throw new UnknownArgumentError(arg);
+            }
         }
 
+        const option = this.positionalArgs[this.currentPositionalIndex];
         const dest = option.dest || option.flags[0];
         const parsedValue = this.parseValue(arg, option, dest);
 
         if (option.nargs === undefined) {
             this.parsedArgs[dest] = parsedValue;
-            this.positionalArgs.shift();
+            this.currentPositionalIndex++;
         } else {
             if (!this.parsedArgs[dest]) {
                 this.parsedArgs[dest] = [];
@@ -272,7 +280,7 @@ class ArgumentParser<T extends Record<string, any> = Record<string, any>> {
             this.parsedArgs[dest].push(parsedValue);
 
             if (typeof option.nargs === 'number' && this.parsedArgs[dest].length === option.nargs) {
-                this.positionalArgs.shift();
+                this.currentPositionalIndex++;
             }
         }
     }
