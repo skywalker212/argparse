@@ -101,8 +101,8 @@ class ArgumentParser<T extends Record<string, any> = Record<string, any>> {
         let optionalArgsUsage = '';
         let details = '';
 
-        for (const argOptions of this.positionalArgs) {
-            const metavar = argOptions.metavar || argOptions.dest || 'arg';
+        for (const [index, argOptions] of this.positionalArgs.entries()) {
+            const metavar = argOptions.metavar || argOptions.dest || `arg${index + 1}`;
             positionalArgsUsage += ` ${metavar}`;
             details += `  ${metavar}    ${argOptions.help || ''}\n`;
         }
@@ -115,9 +115,9 @@ class ArgumentParser<T extends Record<string, any> = Record<string, any>> {
             details += `  ${flagsWithValue}    ${argOptions.help || ''}\n`;
         }
 
-        usage += positionalArgsUsage + optionalArgsUsage + '\n\n';
-        usage += details;
-        return usage;
+        if (positionalArgsUsage !== '' || optionalArgsUsage !== '') usage += positionalArgsUsage + optionalArgsUsage + '\n';
+        if (details !== '') usage += details;
+        return usage.trim();
     }
 
     private parseArg(arg: string, index: number, args: string[]): number {

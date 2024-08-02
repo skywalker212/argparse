@@ -8,6 +8,7 @@ import {
     InvalidNargsError
 } from '../src/argparse';
 
+// I have used an LLM to generate the test cases
 describe('ArgumentParser', () => {
     let parser: ArgumentParser;
 
@@ -173,6 +174,34 @@ describe('ArgumentParser', () => {
         expect(args).toEqual({ pos1: 'a', pos2: ['b', 'c', 'd', 'e'] });
     });
 
+    test('handle excess positional arguments by looping back to last "*" or "+" argument', () => {
+        parser = new ArgumentParser('test', 'Test parser');
+        parser.addArgument(['pos1']);
+        parser.addArgument(['pos2']);
+        parser.addArgument(['pos3'], { nargs: '*' });
+        
+        // This should cause the parser to loop back to pos3 for the 4th and 5th arguments
+        const args = parser.parseArgs('a b c d e');
+        expect(args).toEqual({ pos1: 'a', pos2: 'b', pos3: ['c', 'd', 'e'] });
+    
+        // Now let's test with nargs: '+'
+        parser = new ArgumentParser('test', 'Test parser');
+        parser.addArgument(['pos1']);
+        parser.addArgument(['pos2']);
+        parser.addArgument(['pos3'], { nargs: '+' });
+        
+        const args2 = parser.parseArgs('a b c d e');
+        expect(args2).toEqual({ pos1: 'a', pos2: 'b', pos3: ['c', 'd', 'e'] });
+    
+        // Test that it throws an error if the last argument doesn't have '*' or '+'
+        parser = new ArgumentParser('test', 'Test parser');
+        parser.addArgument(['pos1']);
+        parser.addArgument(['pos2']);
+        parser.addArgument(['pos3']);
+        
+        expect(() => parser.parseArgs('a b c d e')).toThrow(UnknownArgumentError);
+    });
+
     test('handle dest option', () => {
         parser.addArgument(['--name'], { dest: 'username' });
         const args = parser.parseArgs('--name John');
@@ -183,6 +212,7 @@ describe('ArgumentParser', () => {
         parser.addArgument(['input'], { help: 'Input file' });
         parser.addArgument(['--verbose'], { help: 'Increase output verbosity' });
         const usageText = parser.usage();
+        console.log(usageText);
         expect(usageText).toContain('Input file');
         expect(usageText).toContain('Increase output verbosity');
     });
@@ -314,6 +344,7 @@ describe('ArgumentParser', () => {
     test('handle arguments with metavar', () => {
         parser.addArgument(['--age'], { metavar: 'YEARS' });
         const usageText = parser.usage();
+        console.log(usageText);
         expect(usageText).toContain('--age YEARS');
     });
 
