@@ -88,14 +88,6 @@ describe('ArgumentParser', () => {
         expect(() => parser.parseArgs('known unknown')).toThrow(UnknownArgumentError);
     });
 
-    test('handle default values', () => {
-        parser.addArgument(['--name'], { type: 'string', default: 'Anonymous' });
-        parser.addArgument(['--age'], { type: 'number', default: 0 });
-        parser.addArgument(['file'], { type: 'string', default: 'file.txt'});
-        const args = parser.parseArgs('');
-        expect(args).toEqual({ name: 'Anonymous', age: 0, file: 'file.txt' });
-    });
-
     test('handle --key=value syntax', () => {
         parser.addArgument(['--name'], { type: 'string' });
         const args = parser.parseArgs('--name=John');

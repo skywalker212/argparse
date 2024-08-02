@@ -65,14 +65,29 @@ class ArgumentParser<T extends Record<string, any> = Record<string, any>> {
     constructor(private programName: string, private description: string = '') { }
 
     addArgument(flags: string[], options: Partial<ArgumentOptions> = {}): ArgumentParser {
-        const fullOptions: ArgumentOptions = { ...options, flags };
+        const name = flags[flags.length - 1].replace(/^-+/, '');
+        const isOptional = flags[0].startsWith('-');
+
+        const defaultOptions: ArgumentOptions = {
+            type: 'string',
+            default: undefined,
+            nargs: undefined,
+            choices: undefined,
+            required: !isOptional,
+            help: undefined,
+            metavar: name.toUpperCase(),
+            dest: name,
+            flags: flags
+        };
+
+        const fullOptions: ArgumentOptions = { ...defaultOptions, ...options, flags };
+
         if (fullOptions.type === 'boolean' && fullOptions.nargs === undefined) {
             fullOptions.nargs = '?';
         }
         this.validateArgumentOptions(fullOptions);
-        const name = flags[flags.length - 1].replace(/^-+/, '');
 
-        if (flags[0].startsWith('-')) {
+        if (isOptional) {
             this.arguments.set(name, fullOptions);
         } else {
             this.positionalArgs.push(fullOptions);

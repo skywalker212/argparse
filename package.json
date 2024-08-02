@@ -5,7 +5,10 @@
   "main": "dist/argparse.min.js",
   "module": "dist/argparse.esm.js",
   "types": "dist/index.d.ts",
-  "repository": "github:skywalker212/argparse",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/skywalker212/argparse.git"
+  },
   "files": [
     "dist"
   ],
