@@ -201,10 +201,9 @@ describe('ArgumentParser', () => {
     });
 
     test('usage output', () => {
-        parser.addArgument(['input'], { help: 'Input file' });
+        parser.addArgument(['input'], { help: 'Input file', required: false });
         parser.addArgument(['--verbose'], { help: 'Increase output verbosity' });
         const usageText = parser.usage();
-        console.log(usageText);
         expect(usageText).toContain('Input file');
         expect(usageText).toContain('Increase output verbosity');
     });
@@ -336,7 +335,6 @@ describe('ArgumentParser', () => {
     test('handle arguments with metavar', () => {
         parser.addArgument(['--age'], { metavar: 'YEARS' });
         const usageText = parser.usage();
-        console.log(usageText);
         expect(usageText).toContain('--age YEARS');
     });
 

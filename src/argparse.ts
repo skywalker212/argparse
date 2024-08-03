@@ -118,7 +118,7 @@ class ArgumentParser<T extends Record<string, any> = Record<string, any>> {
 
         for (const [index, argOptions] of this.positionalArgs.entries()) {
             const metavar = argOptions.metavar || argOptions.dest || `arg${index + 1}`;
-            positionalArgsUsage += ` ${metavar}`;
+            positionalArgsUsage += argOptions.required ? ` ${metavar}` : ` [${metavar}]`;
             details += `  ${metavar}    ${argOptions.help || ''}\n`;
         }
 
@@ -130,7 +130,7 @@ class ArgumentParser<T extends Record<string, any> = Record<string, any>> {
             details += `  ${flagsWithValue}    ${argOptions.help || ''}\n`;
         }
 
-        if (positionalArgsUsage !== '' || optionalArgsUsage !== '') usage += positionalArgsUsage + optionalArgsUsage + '\n';
+        if (positionalArgsUsage !== '' || optionalArgsUsage !== '') usage += optionalArgsUsage + positionalArgsUsage + '\n';
         if (details !== '') usage += details;
         return usage.trim();
     }
