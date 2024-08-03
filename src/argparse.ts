@@ -110,8 +110,9 @@ class ArgumentParser<T extends Record<string, any> = Record<string, any>> {
         return this.parsedArgs as Partial<T>;
     }
 
-    usage(): string {
-        let usage = `${this.description}\nusage: ${this.programName}`;
+    usage(includeDesc: boolean = true): string {
+        let usage = includeDesc ? `${this.description}\n` : '';
+        usage += `usage: ${this.programName}`;
         let positionalArgsUsage = '';
         let optionalArgsUsage = '';
         let details = '';
